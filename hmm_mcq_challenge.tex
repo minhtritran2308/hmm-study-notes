@@ -1,0 +1,760 @@
+% hmm_mcq_challenge.tex
+% 20 Graduate-Level Multiple-Choice Questions on Hidden Markov Models
+% Focus: Viterbi Algorithm, Baum-Welch (Forward-Backward) Algorithm
+% References: CIS 5110 (Penn), Brown CS1820 lecture notes
+
+\documentclass[12pt]{article}
+
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{geometry}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{parskip}
+
+\geometry{margin=1in}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    urlcolor=blue
+}
+
+\title{\textbf{20 Challenging Graduate-Level MCQs}\\
+       \large Hidden Markov Models: Viterbi, Baum--Welch, and Beyond}
+\author{HMM Study Notes\\
+        \small References: CIS~5110 (UPenn), Brown CS1820}
+\date{}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+% ============================================================
+\section{Introduction}
+% ============================================================
+
+This document contains \textbf{20 highly challenging graduate-level multiple-choice
+questions} on \emph{Hidden Markov Models} (HMMs), with particular emphasis on:
+
+\begin{itemize}
+    \item The \textbf{Viterbi algorithm} for MAP state-sequence decoding,
+    \item The \textbf{Baum--Welch algorithm} (a special case of Expectation--Maximization)
+          for unsupervised parameter estimation,
+    \item The \textbf{Forward--Backward algorithm} and its connection to the E-step of
+          Baum--Welch,
+    \item Complexity, convergence, and subtle theoretical properties.
+\end{itemize}
+
+The questions are drawn from topics covered in advanced probabilistic machine-learning
+courses, notably the \textbf{CIS~5110} notes (University of Pennsylvania) and the
+\textbf{Brown CS1820} lecture notes on sequence models.  They assume familiarity with
+dynamic programming, EM theory, and standard probabilistic graphical model notation.
+
+\medskip
+\noindent
+\textbf{Notation used throughout.}
+\begin{itemize}
+    \item $N$ = number of hidden states; $M$ = size of observation alphabet;
+          $T$ = sequence length.
+    \item $\mathbf{A} \in [0,1]^{N\times N}$: transition matrix,
+          $a_{ij} = P(q_{t+1}=j \mid q_t=i)$.
+    \item $\mathbf{B} \in [0,1]^{N\times M}$: emission matrix,
+          $b_j(k) = P(o_t=k \mid q_t=j)$.
+    \item $\boldsymbol{\pi} \in [0,1]^N$: initial-state distribution.
+    \item $\lambda = (\mathbf{A}, \mathbf{B}, \boldsymbol{\pi})$: the complete HMM parameter set.
+    \item $\mathbf{O} = (o_1, o_2, \dots, o_T)$: observation sequence.
+    \item $\alpha_t(i) = P(o_1,\dots,o_t, q_t=i \mid \lambda)$: forward variable.
+    \item $\beta_t(i) = P(o_{t+1},\dots,o_T \mid q_t=i, \lambda)$: backward variable.
+    \item $\gamma_t(i) = P(q_t=i \mid \mathbf{O}, \lambda)$: state-occupancy posterior.
+    \item $\xi_t(i,j) = P(q_t=i, q_{t+1}=j \mid \mathbf{O}, \lambda)$:
+          transition-occupancy posterior.
+    \item $\delta_t(i)$: Viterbi path probability (max-product variable).
+\end{itemize}
+
+\newpage
+
+% ============================================================
+\section{Multiple-Choice Questions}
+% ============================================================
+
+\begin{enumerate}[label=\textbf{Q\arabic*.}, leftmargin=*, itemsep=2em]
+
+% -------------------------------------------------------
+\item \textbf{Forward Variable Recurrence}
+
+The forward variable is defined as
+$\alpha_t(i) = P(o_1, \dots, o_t,\, q_t = i \mid \lambda)$.
+Which of the following correctly gives the recurrence for $\alpha_{t+1}(j)$?
+
+\begin{enumerate}[label=\Alph*.]
+    \item $\displaystyle \alpha_{t+1}(j)
+          = b_j(o_{t+1})\sum_{i=1}^{N} \alpha_t(i)\, a_{ij}$
+    \item $\displaystyle \alpha_{t+1}(j)
+          = \sum_{i=1}^{N} \alpha_t(i)\, a_{ij}\, b_i(o_{t+1})$
+    \item $\displaystyle \alpha_{t+1}(j)
+          = b_j(o_{t+1})\prod_{i=1}^{N} \alpha_t(i)\, a_{ij}$
+    \item $\displaystyle \alpha_{t+1}(j)
+          = \sum_{i=1}^{N} \alpha_t(i)\, a_{ij} + b_j(o_{t+1})$
+\end{enumerate}
+
+% -------------------------------------------------------
+\item \textbf{Complexity of the Forward Algorithm}
+
+Given an HMM with $N$ hidden states and an observation sequence of length $T$,
+what is the time complexity of the forward algorithm?
+
+\begin{enumerate}[label=\Alph*.]
+    \item $O(N T)$
+    \item $O(N^2 T)$
+    \item $O(2^N T)$
+    \item $O(N^T)$
+\end{enumerate}
+
+% -------------------------------------------------------
+\item \textbf{Viterbi vs.\ Forward Recursion}
+
+The Viterbi algorithm replaces the summation in the forward recurrence with a
+maximization. Formally, let
+\[
+    \delta_t(i) = \max_{q_1,\dots,q_{t-1}}
+        P(q_1,\dots,q_{t-1},\, q_t=i,\, o_1,\dots,o_t \mid \lambda).
+\]
+The correct Viterbi recurrence is:
+
+\begin{enumerate}[label=\Alph*.]
+    \item $\displaystyle \delta_{t+1}(j)
+          = b_j(o_{t+1})\max_{i}\bigl[\delta_t(i)\, a_{ij}\bigr]$
+    \item $\displaystyle \delta_{t+1}(j)
+          = b_j(o_{t+1})\sum_{i}\bigl[\delta_t(i)\, a_{ij}\bigr]$
+    \item $\displaystyle \delta_{t+1}(j)
+          = \max_{i}\bigl[\delta_t(i)\, a_{ij}\bigr]$
+    \item $\displaystyle \delta_{t+1}(j)
+          = b_j(o_{t+1}) + \max_{i}\bigl[\delta_t(i) + \log a_{ij}\bigr]$
+\end{enumerate}
+
+% -------------------------------------------------------
+\item \textbf{Viterbi Backtracking}
+
+After computing all $\delta_t(i)$ and the backpointer array
+$\psi_t(j) = \arg\max_i\bigl[\delta_{t-1}(i)\, a_{ij}\bigr]$,
+the optimal state sequence $q_1^*,\dots,q_T^*$ is recovered by:
+
+\begin{enumerate}[label=\Alph*.]
+    \item Setting $q_T^* = \arg\max_i \delta_T(i)$ and then,
+          for $t = T-1, \dots, 1$, $q_t^* = \psi_{t+1}(q_{t+1}^*)$.
+    \item Setting $q_1^* = \arg\max_i \pi_i$ and then,
+          for $t = 2, \dots, T$, $q_t^* = \arg\max_j a_{q_{t-1}^*,j}$.
+    \item Setting $q_T^* = \arg\max_i \delta_T(i)$ and then,
+          for $t = T, \dots, 2$, $q_{t-1}^* = \psi_T(q_T^*)$.
+    \item Setting $q_t^* = \arg\max_i \gamma_t(i)$ for every $t$.
+\end{enumerate}
+
+% -------------------------------------------------------
+\item \textbf{MAP vs.\ Marginal Decoding}
+
+Let $\hat{\mathbf{q}}_{\text{MAP}} = \arg\max_{\mathbf{q}} P(\mathbf{q}\mid\mathbf{O},\lambda)$
+(Viterbi output) and $\hat{q}_t^{\text{marg}} = \arg\max_i \gamma_t(i)$
+(marginal/posterior decoding). Which statement is \emph{always} true?
+
+\begin{enumerate}[label=\Alph*.]
+    \item Both methods produce identical state sequences.
+    \item $\hat{\mathbf{q}}_{\text{MAP}}$ maximises $P(\mathbf{O}\mid\lambda)$.
+    \item The marginal-decoding sequence $(\hat{q}_1^{\text{marg}},\dots,\hat{q}_T^{\text{marg}})$
+          need not correspond to any valid path with non-zero probability under the HMM.
+    \item The MAP sequence always assigns higher posterior probability to each individual
+          time-step than the marginal-decoding sequence.
+\end{enumerate}
+
+% -------------------------------------------------------
+\item \textbf{Likelihood Computation}
+
+Given the forward variables $\{\alpha_t(i)\}$, the total likelihood
+$P(\mathbf{O}\mid\lambda)$ is computed as:
+
+\begin{enumerate}[label=\Alph*.]
+    \item $\displaystyle P(\mathbf{O}\mid\lambda)
+          = \sum_{i=1}^{N} \alpha_T(i)\,\beta_T(i)$
+    \item $\displaystyle P(\mathbf{O}\mid\lambda)
+          = \sum_{i=1}^{N} \alpha_T(i)$
+    \item $\displaystyle P(\mathbf{O}\mid\lambda)
+          = \max_{i} \alpha_T(i)$
+    \item $\displaystyle P(\mathbf{O}\mid\lambda)
+          = \prod_{t=1}^{T}\sum_{i=1}^{N} \alpha_t(i)$
+\end{enumerate}
+
+% -------------------------------------------------------
+\item \textbf{Backward Variable Definition}
+
+The backward variable $\beta_t(i)$ is defined as
+$P(o_{t+1}, o_{t+2}, \dots, o_T \mid q_t = i,\, \lambda)$.
+Its recurrence (going \emph{backwards} from $T$) is:
+
+\begin{enumerate}[label=\Alph*.]
+    \item $\displaystyle \beta_t(i)
+          = \sum_{j=1}^{N} a_{ij}\, b_j(o_{t+1})\,\beta_{t+1}(j)$
+    \item $\displaystyle \beta_t(i)
+          = \sum_{j=1}^{N} a_{ji}\, b_j(o_{t+1})\,\beta_{t+1}(j)$
+    \item $\displaystyle \beta_t(i)
+          = \max_{j}\bigl[a_{ij}\, b_j(o_{t+1})\,\beta_{t+1}(j)\bigr]$
+    \item $\displaystyle \beta_t(i)
+          = \sum_{j=1}^{N} a_{ij}\,\beta_{t+1}(j)$
+\end{enumerate}
+
+% -------------------------------------------------------
+\item \textbf{State-Occupancy Posterior}
+
+Using forward and backward variables, the posterior probability
+$\gamma_t(i) = P(q_t=i\mid\mathbf{O},\lambda)$ is:
+
+\begin{enumerate}[label=\Alph*.]
+    \item $\displaystyle \gamma_t(i)
+          = \frac{\alpha_t(i)\,\beta_t(i)}{\displaystyle\sum_{j=1}^{N}\alpha_t(j)\,\beta_t(j)}$
+    \item $\displaystyle \gamma_t(i)
+          = \alpha_t(i)\,\beta_t(i)$
+    \item $\displaystyle \gamma_t(i)
+          = \frac{\alpha_t(i)}{\displaystyle\sum_{j=1}^{N}\alpha_t(j)}$
+    \item $\displaystyle \gamma_t(i)
+          = \frac{\alpha_t(i) + \beta_t(i)}{P(\mathbf{O}\mid\lambda)}$
+\end{enumerate}
+
+% -------------------------------------------------------
+\item \textbf{Transition-Occupancy Posterior}
+
+The joint posterior $\xi_t(i,j) = P(q_t=i,\,q_{t+1}=j\mid\mathbf{O},\lambda)$ equals:
+
+\begin{enumerate}[label=\Alph*.]
+    \item $\displaystyle \xi_t(i,j)
+          = \frac{\alpha_t(i)\,a_{ij}\,b_j(o_{t+1})\,\beta_{t+1}(j)}{P(\mathbf{O}\mid\lambda)}$
+    \item $\displaystyle \xi_t(i,j)
+          = \alpha_t(i)\,a_{ij}\,b_j(o_{t+1})\,\beta_{t+1}(j)$
+    \item $\displaystyle \xi_t(i,j)
+          = \frac{\alpha_t(i)\,a_{ij}\,\beta_{t+1}(j)}{P(\mathbf{O}\mid\lambda)}$
+    \item $\displaystyle \xi_t(i,j)
+          = \gamma_t(i)\,\gamma_{t+1}(j)$
+\end{enumerate}
+
+% -------------------------------------------------------
+\item \textbf{Baum--Welch: Re-estimation of Transition Probabilities}
+
+In the M-step of Baum--Welch, the re-estimated transition probability $\hat{a}_{ij}$ is:
+
+\begin{enumerate}[label=\Alph*.]
+    \item $\displaystyle \hat{a}_{ij}
+          = \frac{\displaystyle\sum_{t=1}^{T-1}\xi_t(i,j)}
+                 {\displaystyle\sum_{t=1}^{T-1}\gamma_t(i)}$
+    \item $\displaystyle \hat{a}_{ij}
+          = \frac{\displaystyle\sum_{t=1}^{T}\xi_t(i,j)}
+                 {\displaystyle\sum_{t=1}^{T}\gamma_t(i)}$
+    \item $\displaystyle \hat{a}_{ij}
+          = \frac{\displaystyle\sum_{t=1}^{T-1}\gamma_t(i)}
+                 {\displaystyle\sum_{t=1}^{T-1}\xi_t(i,j)}$
+    \item $\displaystyle \hat{a}_{ij}
+          = \frac{\displaystyle\sum_{t=1}^{T}\xi_t(i,j)}
+                 {\displaystyle\sum_{t=1}^{T}\gamma_t(i)}$
+\end{enumerate}
+
+% -------------------------------------------------------
+\item \textbf{Baum--Welch: Re-estimation of Emission Probabilities}
+
+For a discrete HMM with observation alphabet $\mathcal{V} = \{v_1,\dots,v_M\}$,
+the Baum--Welch re-estimate of $b_j(k) = P(o_t = v_k \mid q_t = j)$ is:
+
+\begin{enumerate}[label=\Alph*.]
+    \item $\displaystyle \hat{b}_j(k)
+          = \frac{\displaystyle\sum_{t=1}^{T}\mathbf{1}[o_t=v_k]\,\gamma_t(j)}
+                 {\displaystyle\sum_{t=1}^{T}\gamma_t(j)}$
+    \item $\displaystyle \hat{b}_j(k)
+          = \frac{\displaystyle\sum_{t=1}^{T}\mathbf{1}[o_t=v_k]\,\gamma_t(j)}
+                 {\displaystyle\sum_{k'=1}^{M}\sum_{t=1}^{T}\mathbf{1}[o_t=v_{k'}]}$
+    \item $\displaystyle \hat{b}_j(k)
+          = \frac{\displaystyle\sum_{t=1}^{T}\gamma_t(j)}
+                 {\displaystyle\sum_{t=1}^{T}\mathbf{1}[o_t=v_k]\,\gamma_t(j)}$
+    \item $\displaystyle \hat{b}_j(k)
+          = \mathbf{1}[o_t = v_k]\,\gamma_t(j)$
+          for any $t$ with $o_t = v_k$
+\end{enumerate}
+
+% -------------------------------------------------------
+\item \textbf{Convergence Guarantees of Baum--Welch}
+
+Which statement best characterizes the convergence properties of the Baum--Welch
+algorithm?
+
+\begin{enumerate}[label=\Alph*.]
+    \item It converges to the global maximum of $P(\mathbf{O}\mid\lambda)$
+          regardless of initialization.
+    \item Each iteration is guaranteed to not decrease $P(\mathbf{O}\mid\lambda)$,
+          but convergence is only to a local maximum or saddle point.
+    \item It converges to the global maximum if $N \geq 2$.
+    \item It minimizes $P(\mathbf{O}\mid\lambda)$ by construction, acting as
+          a gradient descent procedure.
+\end{enumerate}
+
+% -------------------------------------------------------
+\item \textbf{Log-Space Computation}
+
+To avoid numerical underflow when computing forward/backward variables for long
+sequences, practitioners work in log-space. A key operation needed is computing
+$\log\!\sum_i \exp(x_i)$ from $\{x_i\}$ (the log-sum-exp trick). Why is the
+following \emph{naive} formula problematic?
+\[
+    \log\!\sum_i \exp(x_i)
+\]
+
+\begin{enumerate}[label=\Alph*.]
+    \item The exponential can overflow or underflow in floating-point arithmetic
+          before the sum is taken.
+    \item The logarithm is undefined for negative values of $x_i$.
+    \item Dynamic programming cannot be applied in log-space.
+    \item Maximization cannot be converted to log-space.
+\end{enumerate}
+
+% -------------------------------------------------------
+\item \textbf{Multiple Observation Sequences}
+
+When training an HMM on a set of $K$ independent observation sequences
+$\{\mathbf{O}^{(1)}, \dots, \mathbf{O}^{(K)}\}$, the correct M-step update for
+$\hat{a}_{ij}$ is:
+
+\begin{enumerate}[label=\Alph*.]
+    \item $\displaystyle \hat{a}_{ij}
+          = \frac{\displaystyle\sum_{k=1}^{K}\sum_{t=1}^{T_k-1}\xi_t^{(k)}(i,j)}
+                 {\displaystyle\sum_{k=1}^{K}\sum_{t=1}^{T_k-1}\gamma_t^{(k)}(i)}$
+    \item $\displaystyle \hat{a}_{ij}
+          = \frac{1}{K}\sum_{k=1}^{K}\hat{a}_{ij}^{(k)}$
+          where $\hat{a}_{ij}^{(k)}$ is the single-sequence estimate.
+    \item $\displaystyle \hat{a}_{ij}
+          = \frac{\displaystyle\sum_{k=1}^{K}\xi_{T_k}^{(k)}(i,j)}
+                 {\displaystyle\sum_{k=1}^{K}\gamma_{T_k}^{(k)}(i)}$
+    \item Both A and B produce identical results in general.
+\end{enumerate}
+
+% -------------------------------------------------------
+\item \textbf{HMM as a Latent-Variable Model}
+
+In the EM framework applied to HMMs, the complete-data log-likelihood
+$\log P(\mathbf{O}, \mathbf{Q} \mid \lambda)$ decomposes as:
+
+\begin{enumerate}[label=\Alph*.]
+    \item $\displaystyle
+          \log \pi_{q_1}
+          + \sum_{t=1}^{T-1}\log a_{q_t q_{t+1}}
+          + \sum_{t=1}^{T}\log b_{q_t}(o_t)$
+    \item $\displaystyle
+          \prod_{t=1}^{T} \pi_{q_t}\, a_{q_t q_{t+1}}\, b_{q_t}(o_t)$
+    \item $\displaystyle
+          \sum_{t=1}^{T}\log \pi_{q_t}
+          + \sum_{t=1}^{T-1}\log a_{q_t q_{t+1}}
+          + \sum_{t=1}^{T}\log b_{q_t}(o_t)$
+    \item $\displaystyle
+          \sum_{t=1}^{T}\log \pi_{q_t}
+          + \sum_{t=1}^{T}\log a_{q_t q_{t+1}}
+          + \sum_{t=1}^{T}\log b_{q_t}(o_t)$
+\end{enumerate}
+
+% -------------------------------------------------------
+\item \textbf{Identifiability of HMMs}
+
+Regarding parameter identifiability of HMMs, which statement is most accurate?
+
+\begin{enumerate}[label=\Alph*.]
+    \item HMM parameters $(\mathbf{A}, \mathbf{B}, \boldsymbol{\pi})$ are generically
+          identifiable up to label permutation of the hidden states.
+    \item HMMs are never identifiable because any permutation of states yields
+          the same likelihood for all observation sequences.
+    \item Identifiability holds only when the transition matrix $\mathbf{A}$ is diagonal.
+    \item HMM parameters are identifiable if and only if $N < M$.
+\end{enumerate}
+
+% -------------------------------------------------------
+\item \textbf{Viterbi Algorithm in Log-Space}
+
+When the Viterbi algorithm is implemented in log-space (to prevent underflow),
+the recurrence becomes:
+
+\begin{enumerate}[label=\Alph*.]
+    \item $\displaystyle
+          \log\delta_{t+1}(j)
+          = \log b_j(o_{t+1})
+            + \max_{i}\bigl[\log\delta_t(i) + \log a_{ij}\bigr]$
+    \item $\displaystyle
+          \log\delta_{t+1}(j)
+          = \log b_j(o_{t+1})
+            + \sum_{i}\bigl[\log\delta_t(i) + \log a_{ij}\bigr]$
+    \item $\displaystyle
+          \log\delta_{t+1}(j)
+          = \log b_j(o_{t+1})
+            \cdot \max_{i}\bigl[\log\delta_t(i) + \log a_{ij}\bigr]$
+    \item $\displaystyle
+          \log\delta_{t+1}(j)
+          = \log\Bigl(b_j(o_{t+1}) + \max_{i}\bigl[\delta_t(i)\, a_{ij}\bigr]\Bigr)$
+\end{enumerate}
+
+% -------------------------------------------------------
+\item \textbf{Scaling in the Forward Algorithm}
+
+A standard technique to prevent underflow is to scale each forward vector
+$\boldsymbol{\alpha}_t$ by a factor $c_t$ such that $\sum_i \hat{\alpha}_t(i) = 1$,
+where $\hat{\alpha}_t(i) = \alpha_t(i) / c_t$. The log-likelihood is then
+recovered as:
+
+\begin{enumerate}[label=\Alph*.]
+    \item $\displaystyle \log P(\mathbf{O}\mid\lambda)
+          = \sum_{t=1}^{T} \log c_t$
+    \item $\displaystyle \log P(\mathbf{O}\mid\lambda)
+          = \prod_{t=1}^{T} c_t$
+    \item $\displaystyle \log P(\mathbf{O}\mid\lambda)
+          = -\sum_{t=1}^{T} \log c_t$
+    \item $\displaystyle \log P(\mathbf{O}\mid\lambda)
+          = \log\!\left(\sum_{t=1}^{T} c_t\right)$
+\end{enumerate}
+
+% -------------------------------------------------------
+\item \textbf{Posterior Decoding and Validity}
+
+Consider a 2-state HMM in which state 2 cannot follow state 2
+(i.e., $a_{22} = 0$). Suppose that at three consecutive time steps
+$t, t+1, t+2$ the marginal posterior decoder outputs $\hat{q}_t^{\text{marg}} = 2$
+for all three steps. This outcome:
+
+\begin{enumerate}[label=\Alph*.]
+    \item Is impossible because the posterior marginals must satisfy all transition constraints.
+    \item Can occur, because marginal decoding optimizes each time step independently
+          and does not enforce transition validity.
+    \item Implies $P(\mathbf{O}\mid\lambda) = 0$.
+    \item Is guaranteed to also be the Viterbi path in this case.
+\end{enumerate}
+
+% -------------------------------------------------------
+\item \textbf{Relation Between $\xi_t$ and $\gamma_t$}
+
+The marginal $\gamma_t(i)$ can be derived from the joint $\xi_t(i,j)$ by:
+
+\begin{enumerate}[label=\Alph*.]
+    \item $\displaystyle \gamma_t(i) = \sum_{j=1}^{N} \xi_t(i,j)$
+          for $t = 1, \dots, T-1$
+    \item $\displaystyle \gamma_t(i) = \sum_{j=1}^{N} \xi_{t-1}(j,i)$
+          for $t = 2, \dots, T$
+    \item Both A and B are valid expressions (for their respective index ranges).
+    \item $\displaystyle \gamma_t(i) = \xi_t(i,i)$
+\end{enumerate}
+
+\end{enumerate}
+
+\newpage
+
+% ============================================================
+\section{Answer Key and Explanations}
+% ============================================================
+
+\begin{enumerate}[label=\textbf{Q\arabic*.}, leftmargin=*, itemsep=1.5em]
+
+% -------------------------------------------------------
+\item \textbf{Correct answer: A}
+
+The forward recurrence sums over all possible previous states $i$, weights
+each by the transition probability $a_{ij}$, and then multiplies by the emission
+$b_j(o_{t+1})$:
+\[
+    \alpha_{t+1}(j)
+    = b_j(o_{t+1})\sum_{i=1}^{N} \alpha_t(i)\, a_{ij}.
+\]
+Option B incorrectly emits from the \emph{previous} state $i$ instead of the new
+state $j$.  Option C replaces summation with a product (wrong).
+Option D adds instead of multiplying (incorrect factorization of joint probability).
+
+% -------------------------------------------------------
+\item \textbf{Correct answer: B}
+
+At each of the $T$ time steps the forward variable for each of the $N$ states
+is updated by summing over $N$ predecessor states.  Hence the total work is
+$O(N^2 T)$.  Option A ($O(NT)$) would be correct only if transitions were
+independent of previous state (impossible in a proper HMM).  Options C and D
+describe exponential algorithms corresponding to naive enumeration.
+
+% -------------------------------------------------------
+\item \textbf{Correct answer: A}
+
+The Viterbi recurrence replaces $\sum$ with $\max$:
+\[
+    \delta_{t+1}(j)
+    = b_j(o_{t+1})\max_{i}\bigl[\delta_t(i)\, a_{ij}\bigr].
+\]
+Option B is the forward (sum-product) algorithm, not Viterbi.
+Option C omits the emission term.
+Option D is the correct \emph{log-space} version (see Q17), not the probability-space version.
+
+% -------------------------------------------------------
+\item \textbf{Correct answer: A}
+
+Standard Viterbi backtracking:
+\begin{enumerate}
+    \item Find the terminal state: $q_T^* = \arg\max_i \delta_T(i)$.
+    \item Recurse backwards using the stored backpointers:
+          $q_t^* = \psi_{t+1}(q_{t+1}^*)$ for $t = T-1, \dots, 1$.
+\end{enumerate}
+Option B greedily follows the most likely transition at each step---this does not
+maximize the joint path probability.
+Option C incorrectly applies only the last backpointer repeatedly.
+Option D is marginal (posterior) decoding, not MAP path decoding.
+
+% -------------------------------------------------------
+\item \textbf{Correct answer: C}
+
+The Viterbi output is the \emph{joint} MAP sequence; the marginal decoder
+independently maximizes $\gamma_t(i)$ at each step.  Because the $\gamma_t$
+marginals are computed independently of transition constraints, the sequence of
+marginal argmaxes \emph{need not be a valid path}
+(e.g., it may place probability mass on a transition with $a_{ij}=0$).
+Option A is false: the two methods can disagree.
+Option B is false: Viterbi maximises $P(\mathbf{Q}\mid\mathbf{O},\lambda)$,
+not $P(\mathbf{O}\mid\lambda)$.
+Option D is false: there is no such dominance guarantee per time step.
+
+% -------------------------------------------------------
+\item \textbf{Correct answer: B}
+
+At time $T$ all future observations have been consumed, so the backward variable
+$\beta_T(i) = 1$ for all $i$, giving
+$\alpha_T(i)\,\beta_T(i) = \alpha_T(i)$.  Hence:
+\[
+    P(\mathbf{O}\mid\lambda) = \sum_{i=1}^{N} \alpha_T(i).
+\]
+Option A is also correct as a formula (since $\beta_T(i)=1$), but it is
+unnecessarily verbose; if used with $t < T$ one must use both $\alpha$ and
+$\beta$.  As stated, the simplest and most direct formula is B.
+
+\textit{Note:} A is a valid expression at any $t$:
+$\sum_i \alpha_t(i)\beta_t(i) = P(\mathbf{O}\mid\lambda)$ for all $t$.
+If the question asks for the \emph{terminal} expression, B is the cleanest.
+
+% -------------------------------------------------------
+\item \textbf{Correct answer: A}
+
+The backward recurrence proceeds from $T$ to $1$:
+\[
+    \beta_t(i) = \sum_{j=1}^{N} a_{ij}\, b_j(o_{t+1})\,\beta_{t+1}(j).
+\]
+Option B has the transition matrix transposed ($a_{ji}$ instead of $a_{ij}$).
+Option C uses a max instead of sum.
+Option D omits the emission term $b_j(o_{t+1})$.
+
+% -------------------------------------------------------
+\item \textbf{Correct answer: A}
+
+By definition $\gamma_t(i) = P(q_t=i\mid\mathbf{O},\lambda)$. Bayes' theorem gives:
+\[
+    \gamma_t(i)
+    = \frac{P(q_t=i,\mathbf{O}\mid\lambda)}{P(\mathbf{O}\mid\lambda)}
+    = \frac{\alpha_t(i)\,\beta_t(i)}
+           {\displaystyle\sum_{j=1}^{N}\alpha_t(j)\,\beta_t(j)}.
+\]
+Option B omits the normalisation.
+Option C uses only the forward variable (ignores future observations).
+Option D adds $\alpha$ and $\beta$, which is dimensionally and probabilistically incorrect.
+
+% -------------------------------------------------------
+\item \textbf{Correct answer: A}
+
+\[
+    \xi_t(i,j)
+    = \frac{P(q_t=i,\,q_{t+1}=j,\,\mathbf{O}\mid\lambda)}{P(\mathbf{O}\mid\lambda)}
+    = \frac{\alpha_t(i)\,a_{ij}\,b_j(o_{t+1})\,\beta_{t+1}(j)}
+           {P(\mathbf{O}\mid\lambda)}.
+\]
+Option B omits the normalisation denominator.
+Option C omits the emission $b_j(o_{t+1})$.
+Option D would be correct only if $q_t$ and $q_{t+1}$ were independent given $\mathbf{O}$,
+which they are not (due to the Markov structure).
+
+% -------------------------------------------------------
+\item \textbf{Correct answer: A}
+
+The expected number of transitions from $i$ to $j$ is
+$\sum_{t=1}^{T-1}\xi_t(i,j)$, and the expected number of times the chain leaves
+state $i$ is $\sum_{t=1}^{T-1}\gamma_t(i)$:
+\[
+    \hat{a}_{ij}
+    = \frac{\displaystyle\sum_{t=1}^{T-1}\xi_t(i,j)}
+           {\displaystyle\sum_{t=1}^{T-1}\gamma_t(i)}.
+\]
+The upper limit is $T-1$ (not $T$) because no transition originates from the
+last time step; options B and D extend both sums to $t=T$, which introduces a
+systematic bias by including a time point where $\xi_t(i,j)$ is undefined.
+Option C inverts numerator and denominator.
+
+% -------------------------------------------------------
+\item \textbf{Correct answer: A}
+
+The fraction counts the expected number of times state $j$ emits symbol $v_k$
+divided by the total expected time spent in state $j$:
+\[
+    \hat{b}_j(k)
+    = \frac{\displaystyle\sum_{t:\,o_t=v_k}\gamma_t(j)}
+           {\displaystyle\sum_{t=1}^{T}\gamma_t(j)}.
+\]
+Option B normalises by the count of symbol $v_k$ regardless of state---wrong.
+Option C inverts the ratio.
+Option D is not a proper formula (depends on the choice of a single $t$).
+
+% -------------------------------------------------------
+\item \textbf{Correct answer: B}
+
+Baum--Welch is an EM algorithm applied to HMMs.  EM guarantees that the
+observed-data log-likelihood $\log P(\mathbf{O}\mid\lambda)$ is non-decreasing
+at each iteration.  However, the objective is non-convex in $\lambda$, so the
+algorithm can converge to a \emph{local} maximum or saddle point depending on
+initialisation.  Global convergence (option A) is not guaranteed.
+Option C has no theoretical basis.
+Option D is incorrect; EM monotonically \emph{increases} (not decreases) the likelihood.
+
+% -------------------------------------------------------
+\item \textbf{Correct answer: A}
+
+Computing $\exp(x_i)$ for very negative $x_i$ (e.g.\ $x_i = -1000$) yields
+machine zero (underflow), and for very positive values it overflows.
+The standard log-sum-exp trick subtracts $\max_i x_i$ before exponentiating:
+\[
+    \log\!\sum_i e^{x_i}
+    = m + \log\!\sum_i e^{x_i - m}, \quad m = \max_i x_i.
+\]
+Option B is irrelevant: $x_i = \log\alpha_t(i) \leq 0$ in practice, but the
+$\log$ is of a \emph{sum of exponentials}, not of $x_i$ directly.
+Options C and D are false claims.
+
+% -------------------------------------------------------
+\item \textbf{Correct answer: A}
+
+With $K$ independent sequences the complete-data sufficient statistics are
+summed across sequences, and the M-step re-estimate becomes:
+\[
+    \hat{a}_{ij}
+    = \frac{\displaystyle\sum_{k=1}^{K}\sum_{t=1}^{T_k-1}\xi_t^{(k)}(i,j)}
+           {\displaystyle\sum_{k=1}^{K}\sum_{t=1}^{T_k-1}\gamma_t^{(k)}(i)}.
+\]
+Option B (simple average of per-sequence estimates) is incorrect unless all
+sequences have equal length and equal posterior mass on state $i$;
+options A and B are generally different.
+Option C sums only the \emph{final} time step of each sequence, which is incorrect.
+
+% -------------------------------------------------------
+\item \textbf{Correct answer: A}
+
+The joint distribution factorises as:
+\[
+    P(\mathbf{O},\mathbf{Q}\mid\lambda)
+    = \pi_{q_1}\prod_{t=1}^{T-1}a_{q_t q_{t+1}}\prod_{t=1}^{T}b_{q_t}(o_t).
+\]
+Taking $\log$:
+\[
+    \log P(\mathbf{O},\mathbf{Q}\mid\lambda)
+    = \log\pi_{q_1}
+      + \sum_{t=1}^{T-1}\log a_{q_t q_{t+1}}
+      + \sum_{t=1}^{T}\log b_{q_t}(o_t).
+\]
+Option A is correct.
+Option B is in probability space (not log space).
+Option C incorrectly includes $\log\pi_{q_t}$ for every $t$ rather than only $t=1$.
+Option D incorrectly extends the transition sum to $t=T$ (there is no state $q_{T+1}$) and also sums $\log\pi$ at every step.
+
+% -------------------------------------------------------
+\item \textbf{Correct answer: A}
+
+A seminal result (Allman, Matias \& Rhodes, 2009) shows that HMM parameters are
+\emph{generically identifiable} up to permutation of the hidden states,
+provided the emission distributions are linearly independent.
+Option B would be correct only for degenerate (permutation-equivalent) models,
+and identifiability up to permutation is standard.
+Option C is false.
+Option D ($N < M$) is a \emph{sufficient} condition in some settings but not
+necessary in general.
+
+% -------------------------------------------------------
+\item \textbf{Correct answer: A}
+
+Taking $\log$ of the Viterbi recurrence $\delta_{t+1}(j) = b_j(o_{t+1})\max_i[\delta_t(i)a_{ij}]$ and using $\log(xy) = \log x + \log y$:
+\[
+    \log\delta_{t+1}(j)
+    = \log b_j(o_{t+1}) + \max_{i}\bigl[\log\delta_t(i) + \log a_{ij}\bigr].
+\]
+Option B sums instead of taking max---this is the log-space forward algorithm.
+Option C multiplies instead of adding logs (incorrect).
+Option D takes the log after mixing probability-space and log-space terms (incorrect).
+
+% -------------------------------------------------------
+\item \textbf{Correct answer: A}
+
+Define $c_t = \sum_i \alpha_t(i)$ (the normalisation constant at step $t$).
+The scaled forward variable is $\hat{\alpha}_t(i) = \alpha_t(i)/\prod_{s=1}^t c_s$.
+The total likelihood equals the product of all scaling constants:
+\[
+    P(\mathbf{O}\mid\lambda) = \prod_{t=1}^{T} c_t,
+\]
+so $\log P(\mathbf{O}\mid\lambda) = \sum_{t=1}^{T}\log c_t$.
+Option B returns the unlogged product (not log-likelihood).
+Option C negates the sum (would be $-\log P$).
+Option D takes the log of the sum of $c_t$, which is incorrect.
+
+% -------------------------------------------------------
+\item \textbf{Correct answer: B}
+
+Marginal decoding maximises $\gamma_t(i)$ independently at each time step
+without enforcing transition constraints.  If $a_{22}=0$, the Viterbi
+algorithm would never place state 2 at two consecutive time steps, but the
+posterior marginals $\gamma_t(2)$ can still be the largest marginals at
+multiple consecutive steps (because they integrate over \emph{all} paths, not
+just those through state~2).  Thus option B is correct.
+Option A is false.
+Option C is false: a positive observation likelihood is possible even if the
+most probable \emph{marginal} state sequence is invalid.
+Option D is false: the Viterbi path would never repeat state~2 here.
+
+% -------------------------------------------------------
+\item \textbf{Correct answer: C}
+
+Both directions are valid for the index ranges given:
+\begin{align*}
+    \gamma_t(i) &= \sum_{j=1}^{N} \xi_t(i,j),
+    \quad t = 1, \dots, T-1 \quad \text{(marginalise over next state)}, \\
+    \gamma_t(i) &= \sum_{j=1}^{N} \xi_{t-1}(j,i),
+    \quad t = 2, \dots, T \quad \text{(marginalise over previous state)}.
+\end{align*}
+Therefore option C (``both A and B'') is correct.
+Option D, $\gamma_t(i) = \xi_t(i,i)$, equates the marginal to the
+self-transition occupancy, which is wrong unless $N=1$.
+
+\end{enumerate}
+
+\newpage
+
+% ============================================================
+\section*{Quick Reference: Key Formulas}
+% ============================================================
+\addcontentsline{toc}{section}{Quick Reference: Key Formulas}
+
+\begin{center}
+\renewcommand{\arraystretch}{2.0}
+\begin{tabular}{lp{9cm}}
+\toprule
+\textbf{Quantity} & \textbf{Formula} \\
+\midrule
+Forward init & $\alpha_1(i) = \pi_i\, b_i(o_1)$ \\
+Forward recur & $\alpha_{t+1}(j) = b_j(o_{t+1})\sum_i \alpha_t(i)\,a_{ij}$ \\
+Backward init & $\beta_T(i) = 1$ \\
+Backward recur & $\beta_t(i) = \sum_j a_{ij}\,b_j(o_{t+1})\,\beta_{t+1}(j)$ \\
+Likelihood & $P(\mathbf{O}\mid\lambda) = \sum_i \alpha_T(i)$ \\
+State posterior & $\gamma_t(i) = \dfrac{\alpha_t(i)\beta_t(i)}{\sum_j \alpha_t(j)\beta_t(j)}$ \\
+Trans.\ posterior & $\xi_t(i,j) = \dfrac{\alpha_t(i)\,a_{ij}\,b_j(o_{t+1})\,\beta_{t+1}(j)}{P(\mathbf{O}\mid\lambda)}$ \\
+BW: $\hat{a}_{ij}$ & $\dfrac{\sum_{t=1}^{T-1}\xi_t(i,j)}{\sum_{t=1}^{T-1}\gamma_t(i)}$ \\
+BW: $\hat{b}_j(k)$ & $\dfrac{\sum_t \mathbf{1}[o_t=v_k]\,\gamma_t(j)}{\sum_t \gamma_t(j)}$ \\
+Viterbi recur & $\delta_{t+1}(j) = b_j(o_{t+1})\max_i[\delta_t(i)\,a_{ij}]$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\end{document}
